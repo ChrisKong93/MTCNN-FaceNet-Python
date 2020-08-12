@@ -123,3 +123,8 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+20170512-110547/
+20180402-114759/
+train_dir/
+output/
