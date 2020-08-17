@@ -89,7 +89,7 @@ class Network(object):
 
         for op_name in data_dict:
             with tf.variable_scope(op_name, reuse=True):
-            # with tf.compat.v1.variable_scope(op_name, reuse=True):
+                # with tf.compat.v1.variable_scope(op_name, reuse=True):
                 for param_name, data in iteritems(data_dict[op_name]):
                     try:
                         var = tf.get_variable(param_name)
@@ -146,7 +146,7 @@ class Network(object):
         # Convolution for a given input and kernel
         convolve = lambda i, k: tf.nn.conv2d(i, k, [1, s_h, s_w, 1], padding=padding)
         with tf.variable_scope(name) as scope:
-        # with tf.compat.v1.variable_scope(name) as scope:
+            # with tf.compat.v1.variable_scope(name) as scope:
             kernel = self.make_var('weights', shape=[k_h, k_w, c_i // group, c_o])
             # This is the common-case. Convolve the input without any further complications.
             output = convolve(inp, kernel)
@@ -162,7 +162,7 @@ class Network(object):
     @layer
     def prelu(self, inp, name):
         with tf.variable_scope(name):
-        # with tf.compat.v1.variable_scope(name):
+            # with tf.compat.v1.variable_scope(name):
             i = int(inp.get_shape()[-1])
             alpha = self.make_var('alpha', shape=(i,))
             output = tf.nn.relu(inp) + tf.multiply(alpha, -tf.nn.relu(-inp))
@@ -185,7 +185,7 @@ class Network(object):
     @layer
     def fc(self, inp, num_out, name, relu=True):
         with tf.variable_scope(name):
-        # with tf.compat.v1.variable_scope(name):
+            # with tf.compat.v1.variable_scope(name):
             input_shape = inp.get_shape()
             if input_shape.ndims == 4:
                 # The input is spatial. Vectorize it first.
@@ -286,20 +286,19 @@ def create_mtcnn(sess, model_path):
         model_path, _ = os.path.split(os.path.realpath(__file__))
 
     with tf.variable_scope('pnet'):
-    # with tf.compat.v1.variable_scope('pnet'):
+        # with tf.compat.v1.variable_scope('pnet'):
         data = tf.placeholder(tf.float32, (None, None, None, 3), 'input')
         # data = tf.compat.v1.placeholder(tf.float32, (None, None, None, 3), 'input')
-        # print(data)
         pnet = PNet({'data': data})
         pnet.load(os.path.join(model_path, 'det1.npy'), sess)
     with tf.variable_scope('rnet'):
-    # with tf.compat.v1.variable_scope('rnet'):
+        # with tf.compat.v1.variable_scope('rnet'):
         data = tf.placeholder(tf.float32, (None, 24, 24, 3), 'input')
         # data = tf.compat.v1.placeholder(tf.float32, (None, 24, 24, 3), 'input')
         rnet = RNet({'data': data})
         rnet.load(os.path.join(model_path, 'det2.npy'), sess)
     with tf.variable_scope('onet'):
-    # with tf.compat.v1.variable_scope('onet'):
+        # with tf.compat.v1.variable_scope('onet'):
         data = tf.placeholder(tf.float32, (None, 48, 48, 3), 'input')
         # data = tf.compat.v1.placeholder(tf.float32, (None, 48, 48, 3), 'input')
         onet = ONet({'data': data})
@@ -342,19 +341,11 @@ def detect_face(img, minsize, pnet, rnet, onet, threshold, factor):
 
         im_data = imresample(img, (hs, ws))
 
-        # img = Image.fromarray(im_data, 'RGB')
-        # cv2.imshow('1', im_data)
-
-        # im_data.imshow()
-        # print(img_y)
-        # cv2.waitKey()
-
         im_data = (im_data - 127.5) * 0.0078125
-        # print(im_data)
-        # exit()
+
         img_x = np.expand_dims(im_data, 0)
         img_y = np.transpose(img_x, (0, 2, 1, 3))
-        # print(img_y.shape)
+
         out = pnet(img_y)
         out0 = np.transpose(out[0], (0, 2, 1, 3))
         out1 = np.transpose(out[1], (0, 2, 1, 3))

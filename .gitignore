@@ -128,3 +128,5 @@ dmypy.json
 20180402-114759/
 train_dir/
 output/
+.idea/
+dataset/

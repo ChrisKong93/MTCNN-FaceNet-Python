@@ -23,15 +23,14 @@ def dection():
         os.mkdir(emb_dir)
     for file in os.listdir(img_dir):
         single_img = os.path.join(img_dir, file)
-        print(single_img)
-        # print('loading...... :', file)
-        # img_path_set.append(single_img)
-        images = load_and_align_data(single_img, 160, 22, 1.0)
-        # images = load_and_align_data(img_path_set, 160, 22, 1.0)
+        # print(single_img)
+        images = load_and_align_data(single_img, 160, 0, 1.0)
         if len(images) <= 0:
+            print(single_img)
             continue
         # count = 0
         misc.imsave(single_img.replace('test_img', 'emb_img'), images)
+        print('finish' + single_img)
 
 
 print('Creating networks and loading parameters')
@@ -51,13 +50,6 @@ def load_and_align_data(image_path, image_size, margin, gpu_memory_fraction):
     factor = 0.709  # scale factor
 
     img = misc.imread(os.path.expanduser(image_path), mode='RGB')
-    # if img.shape[0] >= 2000 or img.shape[1] >= 2000:
-    #     img = misc.imresize(img, (img.shape[1] // 2, img.shape[0] // 2, 3), interp='bilinear')
-    #     if img.shape[0] >= 2000 or img.shape[1] >= 2000:
-    #         img = misc.imresize(img, (img.shape[1] // 2, img.shape[0] // 2, 3), interp='bilinear')
-    #         if img.shape[0] >= 2000 or img.shape[1] >= 2000:
-    #             img = misc.imresize(img, (img.shape[1] // 2, img.shape[0] // 2, 3), interp='bilinear')
-    # img = misc.imread(image, mode='RGB')
     img_size = np.asarray(img.shape)[0:2]
     bounding_boxes, _ = align.detect_face.detect_face(img, minsize, pnet, rnet, onet, threshold, factor)
     if len(bounding_boxes) < 1:

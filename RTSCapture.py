@@ -1,5 +1,5 @@
 #!/usr/local/bin/python3
-# encodin: utf-8
+# encoding: utf-8
 # author: cx
 
 """经过测试 cv2.VideoCapture 的 read 函数并不能获取实时流的最新帧
@@ -19,7 +19,9 @@
 """
 
 import threading
+
 import cv2
+
 
 class RTSCapture(cv2.VideoCapture):
     """Real Time Streaming Capture.
@@ -28,7 +30,7 @@ class RTSCapture(cv2.VideoCapture):
 
     _cur_frame = None
     _reading = False
-    schemes = ["rtsp://", "rtmp://"] #用于识别实时流
+    schemes = ["rtsp://", "rtmp://"]  # 用于识别实时流
 
     @staticmethod
     def create(url, *schemes):
@@ -81,7 +83,6 @@ class RTSCapture(cv2.VideoCapture):
         if self.frame_receiver.is_alive(): self.frame_receiver.join()
 
 
-
 import sys
 
 if __name__ == '__main__':
@@ -89,20 +90,18 @@ if __name__ == '__main__':
         print("usage:")
         print('python3 RTSCapture.py "rtsp://xxx"')
         sys.exit()
+    rtscap = RTSCapture.create('rtsp://admin:admin@192.168.8.108:8554/live')
+    rtscap.start_read()  # 启动子线程并改变 read_latest_frame 的指向
 
-    rtscap = RTSCapture.create(sys.argv[1])
-    rtscap.start_read() #启动子线程并改变 read_latest_frame 的指向
-    
     while rtscap.isStarted():
-        ok, frame = rtscap.read_latest_frame() #read_latest_frame() 替代 read()
+        ok, frame = rtscap.read_latest_frame()  # read_latest_frame() 替代 read()
         if cv2.waitKey(100) & 0xFF == ord('q'):
             break
         if not ok:
             continue
-
         # 帧处理代码写这里
-        cv2.imshow("cam", frame)
-
+        print('111111')
+        # cv2.imshow("cam", frame)
     rtscap.stop_read()
     rtscap.release()
     cv2.destroyAllWindows()

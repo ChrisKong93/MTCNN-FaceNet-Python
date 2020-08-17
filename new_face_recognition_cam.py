@@ -3,7 +3,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import base64
 import os
 # from queue import Queue
 import time
@@ -12,6 +11,7 @@ import align.detect_face
 import cv2
 import facenet
 import numpy as np
+import pypinyin as pypinyin
 from scipy import misc
 import tensorflow as tf
 
@@ -73,7 +73,6 @@ def load_and_align_data(img, image_size, margin):
         temp_crop = img[newy1:newy2, newx1:newx2, :]
 
         # temp_crop = img[det[i, 1]:det[i, 3], det[i, 0]:det[i, 2], :]
-        print(temp_crop.shape)
         aligned = misc.imresize(temp_crop, (image_size, image_size), interp='bilinear')
         prewhitened = facenet.prewhiten(aligned)
         crop.append(prewhitened)
@@ -83,11 +82,10 @@ def load_and_align_data(img, image_size, margin):
 
 
 with tf.Graph().as_default():
-    # gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=1.0)
-    # sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, log_device_placement=False))
-    gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=1.0, allow_growth=True)
-    sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
-    # sess = tf.InteractiveSession(config=tf.ConfigProto(gpu_options=gpu_options))
+    gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.33, allow_growth=True)
+    sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options,
+                                            log_device_placement=False,
+                                            allow_soft_placement=True))
     # config = tf.ConfigProto()
     # config.gpu_options.allow_growth = True
     # sess = tf.Session(config=config)
@@ -130,22 +128,15 @@ def main_image(img, scale=1):
     compare_num = len(compare_emb)
 
     starttime = time.time()
-    # print(frame.shape)
     resize_img = cv2.resize(img, (int(img.shape[1] / scale), int(img.shape[0] / scale)))
-    # cv2.imshow('camera1', frame)
-    # frame = cv2.resize(frame, (640, 480))
-    # rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
     # 获取 判断标识 bounding_box crop_image
-    mark, bounding_box, crop_image = load_and_align_data(resize_img, 160, 22)
-    # print(timer)
-    name = ''
+    mark, bounding_box, crop_image = load_and_align_data(resize_img, 160, 44)
+    return_list = []
     if (mark):
         feed_dict = {images_placeholder: crop_image, phase_train_placeholder: False}
         emb = sess.run(embeddings, feed_dict=feed_dict)
-        # print(emb.shape)
         temp_num = len(emb)
-        # print(emb)
         fin_obj = []
         print(all_obj)
         # 为bounding_box 匹配标签
@@ -159,53 +150,54 @@ def main_image(img, scale=1):
             print(min_value)
             if (min_value > 0.85):
                 fin_obj.append('unknow')
-                # cv2.imwrite('./output/unknow_' + str(int(time.time())) + '.jpg', frame)  # 写入图片
             else:
                 fin_obj.append(all_obj[dist_list.index(min_value)].split('.')[0])
-                # cv2.imwrite('./output/' + str(
-                #     all_obj[dist_list.index(min_value)].split('.')[0]) + '_' + str(
-                #     int(time.time())) + '.jpg', frame)  # 写入图片
-        # print(fin_obj)
         fin_obj_temp = fin_obj
 
         print(fin_obj_temp)
         print(len(fin_obj))
         # 在frame上绘制边框和文字
         for rec_position in range(temp_num):
-            cv2.rectangle(resize_img, (bounding_box[rec_position, 0], bounding_box[rec_position, 1]),
-                          (bounding_box[rec_position, 2], bounding_box[rec_position, 3]),
-                          (0, 255, 0),
-                          2, 8, 0)
-            try:
-                cv2.putText(
-                    resize_img,
-                    fin_obj[rec_position],
-                    (bounding_box[rec_position, 0], bounding_box[rec_position, 1]),
-                    cv2.FONT_HERSHEY_COMPLEX_SMALL,
-                    0.8,
-                    (0, 0, 255),
-                    thickness=2,
-                    lineType=2)
-            except IndexError as e:
-                cv2.putText(
-                    resize_img,
-                    '',
-                    (bounding_box[rec_position, 0], bounding_box[rec_position, 1]),
-                    cv2.FONT_HERSHEY_COMPLEX_SMALL,
-                    0.8,
-                    (0, 0, 255),
-                    thickness=2,
-                    lineType=2)
-            name = fin_obj[rec_position]
+            recognize_info = {'x1': str(bounding_box[rec_position, 0]), 'y1': str(bounding_box[rec_position, 1]),
+                              'x2': str(bounding_box[rec_position, 2]), 'y2': str(bounding_box[rec_position, 3]),
+                              'name': fin_obj[rec_position]}
+            # cv2.rectangle(resize_img, (bounding_box[rec_position, 0], bounding_box[rec_position, 1]),
+            #               (bounding_box[rec_position, 2], bounding_box[rec_position, 3]),
+            #               (0, 255, 0),
+            #               2, 8, 0)
+            # try:
+            #     cv2.putText(
+            #         resize_img,
+            #         pingyin(fin_obj[rec_position]),
+            #         (bounding_box[rec_position, 0], bounding_box[rec_position, 1]),
+            #         cv2.FONT_HERSHEY_COMPLEX_SMALL,
+            #         0.8,
+            #         (0, 0, 255),
+            #         thickness=2,
+            #         lineType=2)
+            # except IndexError as e:
+            #     cv2.putText(
+            #         resize_img,
+            #         '',
+            #         (bounding_box[rec_position, 0], bounding_box[rec_position, 1]),
+            #         cv2.FONT_HERSHEY_COMPLEX_SMALL,
+            #         0.8,
+            #         (0, 0, 255),
+            #         thickness=2,
+            #         lineType=2)
             # t = time.time()
             # if int(t) % 3 == 0:
             #     str_time = time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime(t))
             #     cv2.imwrite('./output/' + str(fin_obj[rec_position]) + '_'
             #                 + str(str_time) + '.jpg', resize_img)  # 写入图片
-    # cv2.imshow('camera', resize_img)
-    result_image = cv2.imencode('.jpg', resize_img)[1]
-    base64_data = str(base64.b64encode(result_image))[2:-1]
+            return_list.append(recognize_info)
     stoptime = time.time()
     print('usetime:', str(stoptime - starttime))
-    # print(name)
-    return base64_data, name
+    return return_list
+
+
+def pingyin(word):
+    s = ''
+    for i in pypinyin.pinyin(word, style=pypinyin.NORMAL):
+        s += ''.join(i)
+    return s
