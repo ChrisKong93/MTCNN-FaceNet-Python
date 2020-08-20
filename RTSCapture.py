@@ -1,6 +1,4 @@
-#!/usr/local/bin/python3
-# encoding: utf-8
-# author: cx
+# -*- coding: utf-8 -*-
 
 """经过测试 cv2.VideoCapture 的 read 函数并不能获取实时流的最新帧
 而是按照内部缓冲区中顺序逐帧的读取，opencv会每过一段时间清空一次缓冲区
@@ -83,25 +81,25 @@ class RTSCapture(cv2.VideoCapture):
         if self.frame_receiver.is_alive(): self.frame_receiver.join()
 
 
-import sys
-
-if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        print("usage:")
-        print('python3 RTSCapture.py "rtsp://xxx"')
-        sys.exit()
-    rtscap = RTSCapture.create('rtsp://admin:admin@192.168.8.108:8554/live')
-    rtscap.start_read()  # 启动子线程并改变 read_latest_frame 的指向
-
-    while rtscap.isStarted():
-        ok, frame = rtscap.read_latest_frame()  # read_latest_frame() 替代 read()
-        if cv2.waitKey(100) & 0xFF == ord('q'):
-            break
-        if not ok:
-            continue
-        # 帧处理代码写这里
-        print('111111')
-        # cv2.imshow("cam", frame)
-    rtscap.stop_read()
-    rtscap.release()
-    cv2.destroyAllWindows()
+# import sys
+#
+# if __name__ == '__main__':
+#     if len(sys.argv) < 2:
+#         print("usage:")
+#         print('python3 RTSCapture.py "rtsp://xxx"')
+#         sys.exit()
+#     rtscap = RTSCapture.create('rtsp://admin:admin@192.168.8.108:8554/live')
+#     rtscap.start_read()  # 启动子线程并改变 read_latest_frame 的指向
+#
+#     while rtscap.isStarted():
+#         ok, frame = rtscap.read_latest_frame()  # read_latest_frame() 替代 read()
+#         if cv2.waitKey(100) & 0xFF == ord('q'):
+#             break
+#         if not ok:
+#             continue
+#         # 帧处理代码写这里
+#         print('111111')
+#         # cv2.imshow("cam", frame)
+#     rtscap.stop_read()
+#     rtscap.release()
+#     cv2.destroyAllWindows()

@@ -3,6 +3,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import base64
 import os
 # from queue import Queue
 import time
@@ -34,11 +35,18 @@ def load_and_align_data(img, image_size, margin):
     # det = np.squeeze(bounding_boxes[:,0:4])
     det = bounding_boxes
 
-    det[:, 0] = np.maximum(det[:, 0] - margin / 2, 0)
-    det[:, 1] = np.maximum(det[:, 1] - margin / 2, 0)
-    det[:, 2] = np.minimum(det[:, 2] + margin / 2, img_size[1] - 1)
-    det[:, 3] = np.minimum(det[:, 3] + margin / 2, img_size[0] - 1)
+    det_temp = det
 
+    det[:, 0] = np.maximum(det[:, 0], 0)
+    det[:, 1] = np.maximum(det[:, 1], 0)
+    det[:, 2] = np.minimum(det[:, 2], img_size[1] - 1)
+    det[:, 3] = np.minimum(det[:, 3], img_size[0] - 1)
+
+    det_temp[:, 0] = np.maximum(det_temp[:, 0] - margin / 2, 0)
+    det_temp[:, 1] = np.maximum(det_temp[:, 1] - margin / 2, 0)
+    det_temp[:, 2] = np.minimum(det_temp[:, 2] + margin / 2, img_size[1] - 1)
+    det_temp[:, 3] = np.minimum(det_temp[:, 3] + margin / 2, img_size[0] - 1)
+    det_temp = det_temp.astype(int)
     det = det.astype(int)
     crop = []
     for i in range(len(bounding_boxes)):
@@ -72,20 +80,23 @@ def load_and_align_data(img, image_size, margin):
                 # img.shape[2]：图像的通道数
         temp_crop = img[newy1:newy2, newx1:newx2, :]
 
+        print(temp_crop.shape)
+
         # temp_crop = img[det[i, 1]:det[i, 3], det[i, 0]:det[i, 2], :]
         aligned = misc.imresize(temp_crop, (image_size, image_size), interp='bilinear')
         prewhitened = facenet.prewhiten(aligned)
         crop.append(prewhitened)
+
     # np.stack 将crop由一维list变为二维
     crop_image = np.stack(crop)
-    return 1, det, crop_image
+    return 1, det_temp, crop_image
 
 
 with tf.Graph().as_default():
     gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.33, allow_growth=True)
-    sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options,
-                                            log_device_placement=False,
-                                            allow_soft_placement=True))
+    config = tf.ConfigProto()
+    # config.gpu_options.allow_growth = True
+    sess = tf.Session(config=config)
     # config = tf.ConfigProto()
     # config.gpu_options.allow_growth = True
     # sess = tf.Session(config=config)
@@ -138,7 +149,7 @@ def main_image(img, scale=1):
         emb = sess.run(embeddings, feed_dict=feed_dict)
         temp_num = len(emb)
         fin_obj = []
-        print(all_obj)
+        # print(all_obj)
         # 为bounding_box 匹配标签
         for i in range(temp_num):
             dist_list = []
@@ -158,9 +169,21 @@ def main_image(img, scale=1):
         print(len(fin_obj))
         # 在frame上绘制边框和文字
         for rec_position in range(temp_num):
-            recognize_info = {'x1': str(bounding_box[rec_position, 0]), 'y1': str(bounding_box[rec_position, 1]),
-                              'x2': str(bounding_box[rec_position, 2]), 'y2': str(bounding_box[rec_position, 3]),
-                              'name': fin_obj[rec_position]}
+            if fin_obj[rec_position] != 'unknow':
+                with open("./train_dir/emb_img/" + fin_obj[rec_position] + '.jpg', "rb") as f:  # 转为二进制格式
+                    base64_data = str(base64.b64encode(f.read()))[2:-1]  # 使用base64进行加密
+                    reg_img_url = os.getcwd() + '/train_dir/emb_img/' \
+                                  + fin_obj[rec_position] + '.jpg'
+            else:
+                base64_data = 'unknow'
+                reg_img_url = ''
+                # print(base64_data)
+            recognize_info = {'x1': str(int(bounding_box[rec_position, 0])),
+                              'y1': str(int(bounding_box[rec_position, 1])),
+                              'x2': str(int(bounding_box[rec_position, 2])),
+                              'y2': str(int(bounding_box[rec_position, 3])),
+                              'name': fin_obj[rec_position], 'reg_img': base64_data,
+                              'reg_img_url': reg_img_url}
             # cv2.rectangle(resize_img, (bounding_box[rec_position, 0], bounding_box[rec_position, 1]),
             #               (bounding_box[rec_position, 2], bounding_box[rec_position, 3]),
             #               (0, 255, 0),

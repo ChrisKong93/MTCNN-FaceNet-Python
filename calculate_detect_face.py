@@ -23,13 +23,12 @@ def dection():
         os.mkdir(emb_dir)
     for file in os.listdir(img_dir):
         single_img = os.path.join(img_dir, file)
-        # print(single_img)
         images = load_and_align_data(single_img, 160, 0, 1.0)
         if len(images) <= 0:
             print(single_img)
             continue
         # count = 0
-        misc.imsave(single_img.replace('test_img', 'emb_img'), images)
+        misc.imsave(single_img.replace('test_img', 'emb_img').replace(single_img.split('.')[-1], 'jpg'), images)
         print('finish' + single_img)
 
 
