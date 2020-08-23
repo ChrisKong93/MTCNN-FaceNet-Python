@@ -17,17 +17,21 @@ def faceDR(base64_image, scale=1):
     return faceinfo
 
 
-@app.route('/face', methods=['POST'])
+@app.route('/face', methods=['GET', 'POST'])
 def post_Data():
-    image = request.form['image']
-    try:
-        scale = int(request.form['scale'])
-    except:
-        scale = 1
-    faceinfo = faceDR(image, scale)
-    # print(faceinfo)
-    recognize_info = {'faceinfo': faceinfo}
-    return jsonify(recognize_info)
+    if request.method == 'POST':
+        image = request.form['image']
+        try:
+            scale = int(request.form['scale'])
+        except:
+            scale = 1
+        faceinfo = faceDR(image, scale)
+        # print(faceinfo)
+        recognize_info = {'faceinfo': faceinfo}
+        return jsonify(recognize_info)
+    else:
+
+        return 'Hello World'
 
 
 if __name__ == '__main__':

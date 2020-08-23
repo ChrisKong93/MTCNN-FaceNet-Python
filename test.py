@@ -4,7 +4,6 @@ import time
 
 import RTSCapture
 import cv2
-import numpy as np
 import pypinyin
 import requests
 
@@ -59,17 +58,21 @@ def facerecognition(frame):
         #     nparr = np.fromstring(imgData, np.uint8)
         #     img = cv2.imdecode(nparr, cv2.COLOR_BGR2RGB)
         #     cv2.imshow("test", img)
-    cv2.imshow("test", frame)
+    # cv2.imshow("test", frame)
 
 
 # url = 'http://127.0.0.1:5001/face'
-url = 'http://192.168.8.114:5001/face'
+# url = 'http://192.168.8.114:5001/face'
+# url = 'http://192.168.8.122:5001/face'
+# url = 'http://192.168.8.200:5001/face'
+url = 'http://192.168.0.100:5001/face'
 if __name__ == '__main__':
     start = time.time()
     timer = 0
     timer_face = 0
+    timer_frame = 0
     # rtscap = RTSCapture.RTSCapture.create('rtsp://admin:admin12345@192.168.1.12:554/live')
-    rtscap = RTSCapture.RTSCapture.create(1)
+    rtscap = RTSCapture.RTSCapture.create(0)
     rtscap.start_read()  # 启动子线程并改变 read_latest_frame 的指向
     # capture = cv2.VideoCapture('rtsp://admin:admin@192.168.8.108:8554/live')
     # while capture.isOpened():
@@ -79,17 +82,20 @@ if __name__ == '__main__':
         timer += 1
         # start = time.time()
         ret, frame = rtscap.read_latest_frame()
+        frame = cv2.resize(frame, (int(frame.shape[1] / 4), int(frame.shape[0] / 4)))
         if cv2.waitKey(1) & 0xFF == ord('q'):
             print("esc break...")
             break
         if not ret:
             continue
         # 抽帧
-        if int(time.time() - start) * 1000 % 10 == 0:
+        # if int(time.time() - start) * 1000 % 1000 == 0:
+        if timer % 3 == 0:
             timer_face += 1
             # scale = 4
-            # resize_frame = cv2.resize(frame, (int(frame.shape[1] / scale), int(frame.shape[0] / scale)))
             facerecognition(frame)
         end = time.time()
         t = end - start_0
-        print(t, timer, timer_face)
+        # cv2.waitKey(100)
+        cv2.imshow("test", frame)
+        print(t)

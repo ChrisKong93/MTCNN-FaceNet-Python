@@ -13,12 +13,12 @@ def main(args):
     dection()
 
 
-def dection():
+def dection(img_dir='./train_dir/test_img/', emb_dir='./train_dir/emb_img/'):
     # 将目标图片文件夹下的图片地址append进list,传入load_and_align_data(),对图片进行切割（因为其图片参数为list）
     # 这里的位置改为test_img文件夹的绝对路径
-    img_dir = './train_dir/test_img/'
+    # img_dir = './train_dir/test_img/'
     # 改为emb_img文件夹的绝对路径
-    emb_dir = './train_dir/emb_img/'
+    # emb_dir = './train_dir/emb_img/'
     if (os.path.exists(emb_dir) == False):
         os.mkdir(emb_dir)
     for file in os.listdir(img_dir):
@@ -34,13 +34,10 @@ def dection():
 
 print('Creating networks and loading parameters')
 with tf.Graph().as_default():
-    # gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=gpu_memory_fraction)
-    # sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, log_device_placement=False))
+    gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.33, allow_growth=True)
     config = tf.ConfigProto()
-    config.gpu_options.allow_growth = True
-    session = tf.Session(config=config)
-    with session.as_default():
-        pnet, rnet, onet = align.detect_face.create_mtcnn(session, None)
+    sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
+    pnet, rnet, onet = align.detect_face.create_mtcnn(sess, None)
 
 
 def load_and_align_data(image_path, image_size, margin, gpu_memory_fraction):
@@ -70,8 +67,8 @@ def load_and_align_data(image_path, image_size, margin, gpu_memory_fraction):
         newy2 = int(bb[3] + D / 2)
         if newy1 < 0:
             newy1 = 0
-        if newy2 > img.shape[0]:
-            newy2 = img.shape[0]
+        if newy2 >= img.shape[0]:
+            newy2 = img.shape[0] - 1
             # img.shape[0]：图像的垂直尺寸（高度）
             # img.shape[1]：图像的水平尺寸（宽度）
             # img.shape[2]：图像的通道数
@@ -83,8 +80,8 @@ def load_and_align_data(image_path, image_size, margin, gpu_memory_fraction):
         newy2 = int(det[3])
         if newx1 < 0:
             newx1 = 0
-        if newx2 > img.shape[1]:
-            newx2 = img.shape[1]
+        if newx2 >= img.shape[1]:
+            newx2 = img.shape[1] - 1
     print(newy1, newy2, newx1, newx2)
     cropped = img[newy1:newy2, newx1:newx2, :]
     # 根据cropped位置对原图resize，并对新得的aligned进行白化预处理

@@ -15,6 +15,7 @@ import numpy as np
 import pypinyin as pypinyin
 from scipy import misc
 import tensorflow as tf
+from tensorflow.python.platform import gfile
 
 
 def load_and_align_data(img, image_size, margin):
@@ -60,8 +61,8 @@ def load_and_align_data(img, image_size, margin):
             newy2 = int(det[i, 3] + D / 2)
             if newy1 < 0:
                 newy1 = 0
-            if newy2 > img.shape[0]:
-                newy2 = img.shape[0]
+            if newy2 >= img.shape[0]:
+                newy2 = img.shape[0] - 1
                 # img.shape[0]：图像的垂直尺寸（高度）
                 # img.shape[1]：图像的水平尺寸（宽度）
                 # img.shape[2]：图像的通道数
@@ -73,8 +74,8 @@ def load_and_align_data(img, image_size, margin):
             newy2 = det[i, 3]
             if newx1 < 0:
                 newx1 = 0
-            if newx2 > img.shape[1]:
-                newx2 = img.shape[1]
+            if newx2 >= img.shape[1]:
+                newx2 = img.shape[1] - 1
                 # img.shape[0]：图像的垂直尺寸（高度）
                 # img.shape[1]：图像的水平尺寸（宽度）
                 # img.shape[2]：图像的通道数
@@ -92,45 +93,41 @@ def load_and_align_data(img, image_size, margin):
     return 1, det_temp, crop_image
 
 
-with tf.Graph().as_default():
-    gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.33, allow_growth=True)
-    config = tf.ConfigProto()
-    # config.gpu_options.allow_growth = True
-    sess = tf.Session(config=config)
-    # config = tf.ConfigProto()
-    # config.gpu_options.allow_growth = True
-    # sess = tf.Session(config=config)
-    with sess.as_default():
-        # with tf.Session(config=config) as sess:
-        pnet, rnet, onet = align.detect_face.create_mtcnn(sess, None)
-        # 创建load_and_align_data网络
-        print('Creating networks and loading parameters')
-        model = './20180402-114759/'
-        facenet.load_model(model)
+gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.8, allow_growth=True)
+sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
+with gfile.FastGFile('./20180402-114759/20180402-114759.pb', 'rb') as f:
+    graph_def = tf.GraphDef()
+    graph_def.ParseFromString(f.read())
+    sess.graph.as_default()
+    tf.import_graph_def(graph_def, name='')
+    # with tf.Session(config=config) as sess:
+    pnet, rnet, onet = align.detect_face.create_mtcnn(sess, None)
+    # 创建load_and_align_data网络
+    print('Creating networks and loading parameters')
 
-        # Get input and output tensors
-        images_placeholder = tf.get_default_graph().get_tensor_by_name("input:0")
-        embeddings = tf.get_default_graph().get_tensor_by_name("embeddings:0")
-        phase_train_placeholder = tf.get_default_graph().get_tensor_by_name("phase_train:0")
+    # Get input and output tensors
+    images_placeholder = tf.get_default_graph().get_tensor_by_name("input:0")
+    embeddings = tf.get_default_graph().get_tensor_by_name("embeddings:0")
+    phase_train_placeholder = tf.get_default_graph().get_tensor_by_name("phase_train:0")
 
-        image = []
-        nrof_images = 0
+    image = []
+    nrof_images = 0
 
-        # 这里要改为自己emb_img文件夹的位置
-        emb_dir = './train_dir/emb_img/'
-        all_obj = []
-        for i in os.listdir(emb_dir):
-            all_obj.append(i)
-            img = misc.imread(os.path.join(emb_dir, i), mode='RGB')
-            prewhitened = facenet.prewhiten(img)
-            image.append(prewhitened)
-            # image.append(img)
-            nrof_images = nrof_images + 1
+    # 这里要改为自己emb_img文件夹的位置
+    emb_dir = './train_dir/emb_img/'
+    all_obj = []
+    for i in os.listdir(emb_dir):
+        all_obj.append(i)
+        img = misc.imread(os.path.join(emb_dir, i), mode='RGB')
+        prewhitened = facenet.prewhiten(img)
+        image.append(prewhitened)
+        # image.append(img)
+        nrof_images = nrof_images + 1
 
-        images = np.stack(image)
-        # print(images)
-        feed_dict = {images_placeholder: images, phase_train_placeholder: False}
-        compare_emb = sess.run(embeddings, feed_dict=feed_dict)
+    images = np.stack(image)
+    # print(images)
+    feed_dict = {images_placeholder: images, phase_train_placeholder: False}
+    compare_emb = sess.run(embeddings, feed_dict=feed_dict)
 
 
 def main_image(img, scale=1):
@@ -159,9 +156,16 @@ def main_image(img, scale=1):
             min_value = min(dist_list)
             print(dist_list)
             print(min_value)
+
             if (min_value > 0.85):
                 fin_obj.append('unknow')
             else:
+                a = min_value - 0.55
+                b = 1 - a
+                if b > 1:
+                    b = 1
+                bb = "%.2f%%" % (b * 100)
+                print('相似度为:' + str(bb))
                 fin_obj.append(all_obj[dist_list.index(min_value)].split('.')[0])
         fin_obj_temp = fin_obj
 
@@ -184,35 +188,6 @@ def main_image(img, scale=1):
                               'y2': str(int(bounding_box[rec_position, 3])),
                               'name': fin_obj[rec_position], 'reg_img': base64_data,
                               'reg_img_url': reg_img_url}
-            # cv2.rectangle(resize_img, (bounding_box[rec_position, 0], bounding_box[rec_position, 1]),
-            #               (bounding_box[rec_position, 2], bounding_box[rec_position, 3]),
-            #               (0, 255, 0),
-            #               2, 8, 0)
-            # try:
-            #     cv2.putText(
-            #         resize_img,
-            #         pingyin(fin_obj[rec_position]),
-            #         (bounding_box[rec_position, 0], bounding_box[rec_position, 1]),
-            #         cv2.FONT_HERSHEY_COMPLEX_SMALL,
-            #         0.8,
-            #         (0, 0, 255),
-            #         thickness=2,
-            #         lineType=2)
-            # except IndexError as e:
-            #     cv2.putText(
-            #         resize_img,
-            #         '',
-            #         (bounding_box[rec_position, 0], bounding_box[rec_position, 1]),
-            #         cv2.FONT_HERSHEY_COMPLEX_SMALL,
-            #         0.8,
-            #         (0, 0, 255),
-            #         thickness=2,
-            #         lineType=2)
-            # t = time.time()
-            # if int(t) % 3 == 0:
-            #     str_time = time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime(t))
-            #     cv2.imwrite('./output/' + str(fin_obj[rec_position]) + '_'
-            #                 + str(str_time) + '.jpg', resize_img)  # 写入图片
             return_list.append(recognize_info)
     stoptime = time.time()
     print('usetime:', str(stoptime - starttime))
