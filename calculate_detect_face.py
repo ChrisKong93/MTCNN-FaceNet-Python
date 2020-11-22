@@ -2,18 +2,19 @@ import argparse
 import os
 import sys
 
-import align.detect_face
-import facenet
 import numpy as np
 from scipy import misc
 import tensorflow as tf
+
+import align.detect_face
+import facenet
 
 
 def main(args):
     dection()
 
 
-def dection(img_dir='./train_dir/test_img/', emb_dir='./train_dir/emb_img/'):
+def dection(image, img_dir='./train_dir/test_img/', emb_dir='./train_dir/emb_img/'):
     # 将目标图片文件夹下的图片地址append进list,传入load_and_align_data(),对图片进行切割（因为其图片参数为list）
     # 这里的位置改为test_img文件夹的绝对路径
     # img_dir = './train_dir/test_img/'

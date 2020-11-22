@@ -3,19 +3,17 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import base64
-import os
 # from queue import Queue
 import time
 
-import align.detect_face
 import cv2
-import facenet
 import numpy as np
-import pypinyin as pypinyin
 from scipy import misc
 import tensorflow as tf
 from tensorflow.python.platform import gfile
+
+import align.detect_face
+import facenet
 
 
 def load_and_align_data(img, image_size, margin):
@@ -93,7 +91,7 @@ def load_and_align_data(img, image_size, margin):
     return 1, det_temp, crop_image
 
 
-gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.8, allow_growth=True)
+gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=1, allow_growth=True)
 sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
 with gfile.FastGFile('./20180402-114759/20180402-114759.pb', 'rb') as f:
     graph_def = tf.GraphDef()
@@ -113,27 +111,10 @@ with gfile.FastGFile('./20180402-114759/20180402-114759.pb', 'rb') as f:
     image = []
     nrof_images = 0
 
-    # 这里要改为自己emb_img文件夹的位置
-    emb_dir = './train_dir/emb_img/'
-    all_obj = []
-    for i in os.listdir(emb_dir):
-        all_obj.append(i)
-        img = misc.imread(os.path.join(emb_dir, i), mode='RGB')
-        prewhitened = facenet.prewhiten(img)
-        image.append(prewhitened)
-        # image.append(img)
-        nrof_images = nrof_images + 1
-
-    images = np.stack(image)
-    # print(images)
-    feed_dict = {images_placeholder: images, phase_train_placeholder: False}
-    compare_emb = sess.run(embeddings, feed_dict=feed_dict)
-
 
 def main_image(img, scale=1):
     # 修改版load_and_align_data
     # 传入rgb np.ndarray
-    compare_num = len(compare_emb)
 
     starttime = time.time()
     resize_img = cv2.resize(img, (int(img.shape[1] / scale), int(img.shape[0] / scale)))
@@ -144,58 +125,15 @@ def main_image(img, scale=1):
     if (mark):
         feed_dict = {images_placeholder: crop_image, phase_train_placeholder: False}
         emb = sess.run(embeddings, feed_dict=feed_dict)
-        temp_num = len(emb)
-        fin_obj = []
-        # print(all_obj)
-        # 为bounding_box 匹配标签
-        for i in range(temp_num):
-            dist_list = []
-            for j in range(compare_num):
-                dist = np.sqrt(np.sum(np.square(np.subtract(emb[i, :], compare_emb[j, :]))))
-                dist_list.append(dist)
-            min_value = min(dist_list)
-            print(dist_list)
-            print(min_value)
-
-            if (min_value > 0.85):
-                fin_obj.append('unknow')
-            else:
-                a = min_value - 0.55
-                b = 1 - a
-                if b > 1:
-                    b = 1
-                bb = "%.2f%%" % (b * 100)
-                print('相似度为:' + str(bb))
-                fin_obj.append(all_obj[dist_list.index(min_value)].split('.')[0])
-        fin_obj_temp = fin_obj
-
-        print(fin_obj_temp)
-        print(len(fin_obj))
-        # 在frame上绘制边框和文字
-        for rec_position in range(temp_num):
-            if fin_obj[rec_position] != 'unknow':
-                with open("./train_dir/emb_img/" + fin_obj[rec_position] + '.jpg', "rb") as f:  # 转为二进制格式
-                    base64_data = str(base64.b64encode(f.read()))[2:-1]  # 使用base64进行加密
-                    reg_img_url = os.getcwd() + '/train_dir/emb_img/' \
-                                  + fin_obj[rec_position] + '.jpg'
-            else:
-                base64_data = 'unknow'
-                reg_img_url = ''
-                # print(base64_data)
-            recognize_info = {'x1': str(int(bounding_box[rec_position, 0])),
-                              'y1': str(int(bounding_box[rec_position, 1])),
-                              'x2': str(int(bounding_box[rec_position, 2])),
-                              'y2': str(int(bounding_box[rec_position, 3])),
-                              'name': fin_obj[rec_position], 'reg_img': base64_data,
-                              'reg_img_url': reg_img_url}
+        for i in range(len(emb)):
+            recognize_info = {'x1': str(int(bounding_box[i, 0])),
+                              'y1': str(int(bounding_box[i, 1])),
+                              'x2': str(int(bounding_box[i, 2])),
+                              'y2': str(int(bounding_box[i, 3])),
+                              'emb': emb[i].tolist()
+                              }
             return_list.append(recognize_info)
+
     stoptime = time.time()
     print('usetime:', str(stoptime - starttime))
     return return_list
-
-
-def pingyin(word):
-    s = ''
-    for i in pypinyin.pinyin(word, style=pypinyin.NORMAL):
-        s += ''.join(i)
-    return s

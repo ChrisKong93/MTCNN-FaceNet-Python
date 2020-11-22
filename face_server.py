@@ -1,8 +1,9 @@
+# -*- coding: utf-8 -*-
 import base64
 
 import cv2
 from flask import Flask, jsonify, request
-import new_face_recognition_cam
+from new_face_recognition import main_image
 import numpy as np
 from werkzeug.serving import make_server
 
@@ -13,7 +14,7 @@ def faceDR(base64_image, scale=1):
     imgData = base64.b64decode(base64_image)
     nparr = np.fromstring(imgData, np.uint8)
     img = cv2.imdecode(nparr, cv2.COLOR_BGR2RGB)
-    faceinfo = new_face_recognition_cam.main_image(img=img, scale=scale)
+    faceinfo = main_image(img=img, scale=scale)
     return faceinfo
 
 
@@ -30,8 +31,7 @@ def post_Data():
         recognize_info = {'faceinfo': faceinfo}
         return jsonify(recognize_info)
     else:
-
-        return 'Hello World'
+        return 'Hello Face'
 
 
 if __name__ == '__main__':
